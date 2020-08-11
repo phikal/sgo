@@ -1,0 +1,12 @@
+
+    SIMPLE GOBAN
+
+Sgo is an X11 goban (Go board, as in Go[0] the game), that can be used
+for human vs. human or human vs. bot games.
+
+On how to install and use sgo, read the INSTALL. Also consider reading
+the sgo(1) manpage (sgo.6).
+
+Sgo is distrubuted under GPLv3.0+, see COPYING for more details.
+
+[0] https://en.wikipedia.org/wiki/Go_(game)

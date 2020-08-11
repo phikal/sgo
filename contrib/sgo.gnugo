@@ -1,0 +1,42 @@
+#!/bin/sh
+#
+# Copyright 2020 Philip K.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+DIR="$(mktemp -dt sgo.gnugo-XXX)"
+PIPE="$DIR/fifo"
+
+if ! command -v sgo 2>&1 >/dev/null
+then
+    echo "sgo not found" 1>&2
+    exit 1
+fi
+
+if ! command -v gnugo 2>&1 >/dev/null
+then
+    echo "gnugo not in path" 1>&2
+    exit 1
+fi
+
+cleanup()
+{
+    rm -rf "$DIR"
+}
+
+trap cleanup 0
+
+mkfifo "$PIPE"
+sgo "$@" < "$PIPE" | gnugo --mode gtp > "$PIPE"
+cleanup

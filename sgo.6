@@ -1,0 +1,85 @@
+\" Copyright 2020 Philip K.
+
+\" This program is free software: you can redistribute it and/or modify
+\" it under the terms of the GNU General Public License as published by
+\" the Free Software Foundation, either version 3 of the License, or
+\" (at your option) any later version.
+
+\" This program is distributed in the hope that it will be useful,
+\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+\" GNU General Public License for more details.
+
+\" You should have received a copy of the GNU General Public License
+\" along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+.Dd August 07, 2020 
+.Dt SGO 6 
+.Os
+.Sh NAME 
+.Nm sgo 
+.Nd simple x11 goban
+.Sh SYNOPSIS
+.Nm
+.Op Fl m
+.Op Fl v
+.Op Fl D
+.Op Fl s Ar size
+.Op Fl c Ar color
+.Sh DESCRIPTION
+.Nm
+is a simple X11 goban
+.Pq Go board, as in Go the same
+that can be used for human vs. human or human vs. computer games.
+.Pp
+For local human vs. human games, invoke
+.Nm
+with the
+.Fl m
+.Qq manual
+flag. This will let two players make moves, in alternative turns.
+.Pp
+For human vs. computer games, the standard input and output of
+.Nm
+is used to communicate via GTP
+.Pq Go Text Protocol .
+.Sh USAGE
+.Nm
+is controlled using the mouse, using all three mouse buttons:
+.Bl -tag -width Ds
+.It Left-Click
+Place a stone at the closest intersection.
+.It Middle-Click
+Pass your move. Double click to resign.
+.It Right-Click
+Undo the last move.
+.El
+.Pp
+When the game ends
+.Pq two consecutive passes or someone resigns
+the window remains open until the user closes it.
+.Sh EXAMPLES
+To have
+.Nm
+display a game between the user and
+.Xr gnugo 6 ,
+create a named pipe using
+.Xr mkfifo 1 ,
+and start
+.Nm
+as follows
+
+.Dl $ ./sgo < pipe | gnugo --mode gtp > pipe
+
+after the game has ended, you may delete the pipe.
+.Pp
+To not have to manually setup sgo for whatever engine, one may use the
+shell scripts such as
+.Dq sgo.gnugo ,
+.Dq sgo.leela-zero
+or
+.Dq sgo.pachi .
+.Sh SEE ALSO
+.Xr 
+.Xr gnugo 6
+.Xr 

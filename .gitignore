@@ -1,0 +1,7 @@
+*.o
+sgo
+TAGS
+#*#
+*~
+*_flymake.c
+*_flymake.h

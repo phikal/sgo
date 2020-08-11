@@ -1,0 +1,47 @@
+Sgo itself only depends on XCB (X protocol C-language Binding)[0],
+beyond the usual C development tools. What packages are specifically
+required, is listed below.
+
+With these installed, all you have to do is run
+
+    $ make
+
+in this directory.
+
+If you wish to install sgo globally on your system, run
+
+   # make install
+
+To play against a bot, external programms are required. See the
+"contrib" subdirectory for ready-made scripts that connect sgo with
+various engines.
+
+[0] https://xcb.freedesktop.org/
+
+				 ~~~
+
+Here follows a list of packages that you'd have to install to build
+sgo:
+
+- Debian-based Systems (Debian, Ubuntu, Linux Mint, ...):
+
+  # apt install build-essential libxcb-dev 
+
+- RedHat-based Systems (RHEL, Fedora, CentOS, ...):
+
+  # dnf install gcc make libxcb-devel
+
+- OpenBSD:
+
+  # pkg_add xcb
+
+- Void Linux:
+
+  # xbps-install tcc libxcb-devel bmake
+
+  Of course, gcc and GNU make are just as usable.
+
+- GNU Guix:
+
+  $ guix package -i gcc make libxcb
+
