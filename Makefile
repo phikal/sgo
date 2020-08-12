@@ -29,8 +29,8 @@ sgo: $(OBJ)
 	$(CC) $(LDFLAGS) -o $@ $(OBJ)
 
 board.o: board.h
-gtp.o:   gtp.c gtp.h board.h
-sgo.o:   sgo.c gtp.c board.c
+gtp.o:   gtp.c board.h
+sgo.o:   sgo.c gtp.h board.h
 
 TAGS: board.c gtp.c sgo.c board.h gtp.h
 	ctags -Re $^
