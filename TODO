@@ -1,1 +1,4 @@
 - Add SGF support (11Aug20)
+- Handle undo in automatic mode better (13Aug20)
+- Write tests (14Aug20)
+- Add more engine scripts (14Aug20)
