@@ -128,6 +128,8 @@ static bool valid_transition[11][11] = {
      },
 };
 
+#undef OK
+
 /* state transition macro */
 #define S(nstate)                                       \
      do {                                               \
