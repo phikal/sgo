@@ -15,9 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-DIR="$(mktemp -dt sgo.gnugo-XXX)"
-PIPE="$DIR/fifo"
-
 if ! command -v sgo 2>&1 >/dev/null
 then
     echo "sgo not found" 1>&2
@@ -29,6 +26,9 @@ then
     echo "gnugo not in path" 1>&2
     exit 1
 fi
+
+DIR="$(mktemp -dt sgo.gnugo-XXX)"
+PIPE="$DIR/fifo"
 
 cleanup()
 {
