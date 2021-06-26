@@ -21,8 +21,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include <sys/select.h>
-#include <sys/types.h>
+#include <poll.h>
 
 #include <xcb/xcb.h>
 
@@ -34,7 +33,6 @@
 #define LENGTH(a) (sizeof(a)/sizeof(*a))
 
 #define MARGIN 16
-
 
 
 
@@ -410,41 +408,59 @@ ui_draw(struct Board *b, enum State state, enum Stone self, bool manual)
 void
 ui_loop(struct Board *b, enum State *state, enum Stone self, bool manual)
 {
-     fd_set set;
-     int xfd, c;
+     struct pollfd fds[2] = {
+          {
+               .fd = STDIN_FILENO,
+               .events = manual ? 0 : POLLIN | POLLERR,
+          }, {
+               .fd = xcb_get_file_descriptor(conn),
+               .events = POLLIN | POLLERR,
+          },
+     };
+
      xcb_generic_event_t *event;
      xcb_timestamp_t last_pass = {0};
+     int c;
 
-     xfd = xcb_get_file_descriptor(conn);
      b->changed = true;
      for (;;) {
+          fprintf(stderr, "changed: %d\n", b->changed);
           if (b->changed) {
                *state = ui_draw(b, *state, self, manual);
           }
 
-          if (!manual) {
-               gtp_check_responses();
-          }
-
-          FD_ZERO(&set);
-          FD_SET(xfd, &set);
-
-          c = select(xfd + 1,
-                     &set, NULL, NULL,
-                     &(struct timeval) { .tv_usec = 100000 });
+          c = poll(fds, LENGTH(fds), 1000);
+          fprintf(stderr, "poll() -> %d (%d)\n", c, errno);
           if (c == 0) {
                continue;
-          } if (c < 0) {
-               if (errno == EINTR) {
+          } if (c == -1) {
+               if (errno == EINTR || errno == EAGAIN) {
                     continue;
                }
-               perror("select");
+               perror("poll");
                exit(EXIT_FAILURE);
           }
 
+          /* check for input on stdin */
+          if (fds[0].revents & POLLERR) {
+               perror("poll");
+               exit(EXIT_FAILURE);
+          }
+          if (fds[0].revents & POLLIN) {
+               gtp_check_responses();
+          }
+
+          /* check for UI input */
+          if (fds[1].revents & POLLERR) {
+               perror("poll");
+               exit(EXIT_FAILURE);
+          }
           event = xcb_poll_for_event(conn);
+          if (!(fds[1].revents & POLLIN)) {
+               continue;
+          }
           if (!event) {
-               abort();
+               return;
           }
 
           switch (event->response_type & ~0x80) {
