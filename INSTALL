@@ -25,7 +25,7 @@ sgo:
 
 - Debian-based Systems (Debian, Ubuntu, Linux Mint, ...):
 
-  # apt install build-essential libxcb-dev 
+  # apt install build-essential libxcb1-dev
 
 - RedHat-based Systems (RHEL, Fedora, CentOS, ...):
 
