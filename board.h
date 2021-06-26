@@ -20,26 +20,21 @@
 #ifndef BOARD_H
 #define BOARD_H
 
-typedef enum {
+enum Stone {
      NONE,
      BLACK,
      WHITE,
-} Stone;
-
-typedef struct Board	Board;
-typedef struct Move	Move;
-typedef struct Coord	Coord;
-typedef struct Group	Group;
+};
 
 struct Board {
      uint8_t	width;
      uint8_t	height;
      uint16_t	black_captured;
      uint16_t	white_captured;
-     Move	*history;
+     struct Move *history;
      bool       changed;
-     Stone      next;
-     Stone	board[];
+     enum Stone      next;
+     enum Stone	board[];
 };
 
 struct Coord {
@@ -47,17 +42,17 @@ struct Coord {
 };
 
 struct Move {
-     Stone	player;
-     Coord	placed;
+     enum Stone player;
+     struct Coord placed;
      bool       pass;
      bool       setup;          /* setup move cannot be undone */
 
-     Move	*before;
-     Move	**after;
+     struct Move *before;
+     struct Move **after;
      uint16_t	children;
      
      uint16_t	removed_n;
-     Coord	removed[];
+     struct Coord removed[];
 };
 
 #define C(X, Y) ((struct Coord) { .x = (X), .y = (Y)})	    /* coord shorthand */
@@ -66,12 +61,12 @@ struct Move {
 #define stone_at(b, c) (b->board[I(b, c)])
 #define opposite(s) ((s) == BLACK ? WHITE : (s) == WHITE ? BLACK : (abort(), s))
 
-Board		*make_board(uint8_t, uint8_t);
-bool	        valid_move(Board *, Stone, Coord);
-void            pass(Board*, Stone);
-int16_t		place_stone(Board *, Stone, Coord);
-uint16_t	player_points(Board *, Stone);
-bool		undo_move(Board *);
-void		board_free(Board *);
+struct Board	*make_board(uint8_t, uint8_t);
+bool	        valid_move(struct Board *, enum Stone, struct Coord);
+void            pass(struct Board*, enum Stone);
+int16_t		place_stone(struct Board *, enum Stone, struct Coord);
+uint16_t	player_points(struct Board *, enum Stone);
+bool		undo_move(struct Board *);
+void		board_free(struct Board *);
 
 #endif

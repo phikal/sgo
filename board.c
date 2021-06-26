@@ -45,11 +45,11 @@
  *
  * Return non-NULL if successful, or NULL if an error occurs. Errno
  * will be set accordingly. */
-Board *
+struct Board *
 make_board(uint8_t width, uint8_t height)
 {
      /* uint16_t i; */
-     Board *b;
+     struct Board *b;
 
      assert(0 == NONE);
 
@@ -58,18 +58,19 @@ make_board(uint8_t width, uint8_t height)
           return NULL;
      }
 
-     b = calloc(1, sizeof(Board) + (sizeof(Stone) * width * height));
+     b = calloc(1, sizeof(struct Board) + (sizeof(enum Stone) * width * height));
      if (b == NULL) {
           return NULL;
      }
 
      b->width = width;
      b->height = height;
+     b->changed = true;
 
      return b;
 }
 
-/* Count (pesido-)liberties of group containing Coord..
+/* Count (pesudo-)liberties of group containing Coord.
  *
  * For black or white stones, the number of liberties are
  * returned. For empty verteces, the size of the group is
@@ -80,7 +81,7 @@ make_board(uint8_t width, uint8_t height)
  * indeces I (representing the coordinate P(b, I)) with true, if they
  * are part of the traversed group. If NULL, it will be ignored. */
 static uint16_t
-count_liberties(Board *b, Coord c, bool *group)
+count_liberties(struct Board *b, struct Coord c, bool *group)
 {
      bool visited[b->width * b->height];
      uint16_t stack[b->width * b->height];
@@ -105,7 +106,7 @@ count_liberties(Board *b, Coord c, bool *group)
      /* start tree search */
      while (ssize > 0) {
           start = ssize - 1;
-          Coord nextto[4] = neighbours(P(b, stack[start]));
+          struct Coord nextto[4] = neighbours(P(b, stack[start]));
 
           /* consider all neighbours */
           for (i = 0; i < LENGTH(nextto); i++) {
@@ -149,7 +150,7 @@ count_liberties(Board *b, Coord c, bool *group)
 
 /* check if STONE can be placed on COORD within BOARD. */
 bool
-valid_move(Board *b, Stone s, Coord c)
+valid_move(struct Board *b, enum Stone s, struct Coord c)
 {
      bool group[b->height * b->width];
      uint16_t i, l;
@@ -160,7 +161,7 @@ valid_move(Board *b, Stone s, Coord c)
      }
 
      /* consider all neighbours */
-     Coord nextto[4] = neighbours(c);
+     struct Coord nextto[4] = neighbours(c);
      for (i = 0; i < LENGTH(nextto); i++) {
           if (invalid_coord(b, nextto[i])) {
                continue;
@@ -206,13 +207,13 @@ valid_move(Board *b, Stone s, Coord c)
 
 /* Update BOARD after LAST_CHANGE */
 static int16_t
-update_board(Board *b, Coord last_change)
+update_board(struct Board *b, struct Coord last_change)
 {
      bool group[b->width * b->height];
      bool visited[b->width * b->height];
      bool removed[b->width * b->height];
      uint16_t changed = 1, gsize = 0, i, j;
-     Coord c;
+     struct Coord c;
 
      /* initially mark all vertices as NOT visited/changed */
      memset(visited, false, sizeof(visited));
@@ -272,7 +273,7 @@ update_board(Board *b, Coord last_change)
      }
 
      /* create new history object */
-     Move *move = malloc(sizeof(Move) + sizeof(Coord) * changed);
+     struct Move *move = malloc(sizeof(struct Move) + sizeof(struct Coord) * changed);
      if (!move) {
           perror("calloc");
           abort();
@@ -292,13 +293,13 @@ update_board(Board *b, Coord last_change)
                move->removed[j++] = P(b, i);
           }
      }
-     assert(j == move->removed_n);  /* changed = removed + (1) added */
+     /* assert(j == move->removed_n);  /\* changed = removed + (1) added *\/ */
 
      if (b->history)  {
           /* insert backlink */
           b->history->after = realloc(
                b->history->after,
-               sizeof(Move) * (b->history->children + 1)
+               sizeof(struct Move) * (b->history->children + 1)
                );
           if (!b->history->after) {
                perror("realloc");
@@ -311,7 +312,7 @@ update_board(Board *b, Coord last_change)
      /* save last move */
      b->history = move;
 
-     assert(changed < (1 << 15)); /* prevent overflow */
+     /* assert(changed < (1 << 15)); /\* prevent overflow *\/ */
 
      return (int16_t) changed;
 }
@@ -320,9 +321,9 @@ update_board(Board *b, Coord last_change)
  *
  * If no undo was possible, return false. Otherwise return true. */
 bool
-undo_move(Board *b)
+undo_move(struct Board *b)
 {
-     Move *move = b->history;
+     struct Move *move = b->history;
      uint16_t i;
 
      /* if there is no predecesor, the history cannot be changed */
@@ -353,14 +354,13 @@ undo_move(Board *b)
           ;
      }
 
-     b->changed = true;
      return true;
 }
 
 void
-pass(Board *b, Stone s)
+pass(struct Board *b, enum Stone s)
 {
-     Move *move = malloc(sizeof(Move));
+     struct Move *move = malloc(sizeof(struct Move));
      if (!move) {
           perror("malloc");
           abort();
@@ -381,21 +381,20 @@ pass(Board *b, Stone s)
  * Return number of changed stones if the move was valid, otherwise
  * return a negative value. */
 int16_t
-place_stone(Board *b, Stone s, Coord c)
+place_stone(struct Board *b, enum Stone s, struct Coord c)
 {
      if (!valid_move(b, s, c)) {
           return -1;
      }
 
      stone_at(b, c) = s;
-     b->changed = true;
 
      return update_board(b, c);
 }
 
 /* Calculate points for player STONE on BOARD. */
 uint16_t
-player_points(Board *b, Stone s)
+player_points(struct Board *b, enum Stone s)
 {
      bool visited[b->width * b->height];
      bool group[b->width * b->height];
@@ -425,7 +424,7 @@ player_points(Board *b, Stone s)
           surrounded = true;
           for (j = 0; j < LENGTH(group); j++) {
                if (group[j] && surrounded)  {
-                    Coord nextto[4] = neighbours(P(b, j));
+                    struct Coord nextto[4] = neighbours(P(b, j));
 
                     for (k = 0; k < LENGTH(nextto); k++) {
                          if (invalid_coord(b, nextto[k])) {
@@ -461,7 +460,7 @@ player_points(Board *b, Stone s)
      }
 
      switch (s) {
-          /* TODO: consider other scoring systems */
+          /* TODO : consider other scoring systems */
      case BLACK:
           return p + b->white_captured;
      case WHITE:
@@ -472,12 +471,12 @@ player_points(Board *b, Stone s)
 }
 
 static void
-move_free(Move *m)
+move_free(struct Move *m)
 {
      uint16_t i;
 
      /* the move should always exist */
-     assert(m);
+     assert(m != NULL);
 
      /* free all children */
      for (i = 0; i < m->children; i++) {
@@ -490,14 +489,14 @@ move_free(Move *m)
 }
 
 void
-board_free(Board *b)
+board_free(struct Board *b)
 {
      if (!b) {
           return;
      }
 
      /* find root history node */
-     Move *m = b->history;
+     struct Move *m = b->history;
      if (m) {
           while (m->before) {
                m = m->before;

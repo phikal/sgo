@@ -22,7 +22,7 @@
 #ifndef GTP_H
 #define GTP_H
 
-typedef enum {
+enum Command {
      PROTOCOL_VERSION,
      NAME,
      KNOWN_COMMAND,
@@ -35,9 +35,9 @@ typedef enum {
      GENMOVE,
      UNDO,
      REG_GENMOVE,
-} Command;
+};
 
-typedef enum {
+enum Form {
      INVAL,
      NIHIL,
      INT,
@@ -47,10 +47,7 @@ typedef enum {
      COLOR,
      MOVE,
      BOOL,
-} Type;
-
-typedef struct Obj Obj;
-typedef struct Vertex Vertex;
+};
 
 struct Vertex {
      enum {
@@ -58,19 +55,18 @@ struct Vertex {
 	  PASS,
 	  RESIGN
      } type;
-     Coord coord;
+     struct Coord coord;
 };
 
-
 struct Obj {
-     Type type;
+     enum Form form;
      union {
 	  uint32_t	 v_int;
 	  float		 v_float;
 	  char		*v_str;
-	  Vertex	 v_vertex;
-	  Stone		 v_color;
-	  Obj		*v_list;
+	  struct Vertex	 v_vertex;
+	  enum Stone	 v_color;
+	  struct Obj	*v_list;
      } val;
      uint64_t		len;	/* used by LIST */
 };
@@ -78,12 +74,12 @@ struct Obj {
 /* A callback processes and object with an error state.
  *
  * If the board was changed, it returns true. */
-typedef bool (*Callback)(Obj*, bool);
+typedef bool (*callback)(struct Obj*, bool);
 
-void gtp_run_command(Board *, Command, char *, Callback);
-void gtp_init(Board *);
+void gtp_run_command(struct Board *, enum Command, char *, callback);
+void gtp_init(struct Board *);
 void gtp_check_responses(void);
-bool gtp_place_stone(Board *, Stone, Coord);
-void gtp_pass(Board *, Stone);
+bool gtp_place_stone(struct Board *, enum Stone, struct Coord);
+void gtp_pass(struct Board *, enum Stone);
      
 #endif

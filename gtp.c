@@ -6,12 +6,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
@@ -30,16 +30,19 @@
 #include "board.h"
 #include "gtp.h"
 
-#define gtp_ensure(cond, msg) do if (!(cond)) gtp_error(msg); while (0)
+/* The Go Text Protocol specification can be found here:
+ *
+ * http://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html
+ * */
 
 extern bool verbose;
 extern bool debug;
 
 static struct Query {
      uint32_t id;
-     Command cmd;
-     Callback cb;
-     Board *b;
+     enum Command cmd;
+     callback cb;
+     struct Board *b;
      struct Query *next;
 } *queries = NULL;
 
@@ -86,22 +89,23 @@ gtp_log(char *fmt, ...)
 
 
 static bool
-gtp_ensure_version(Obj *o, bool error)
+gtp_ensure_version(struct Obj *o, bool error)
 {
      assert(!error);
-     assert(o->type == INT);
-     gtp_ensure(o->val.v_int == 2, "invalid protocol version");
+     assert(o->form == INT);
+     if (o->val.v_int != 2)
+          gtp_error("invalid protocol version");
 
      return false;
 }
 
 static bool
-gtp_check_name(Obj *o, bool error)
+gtp_check_name(struct Obj *o, bool error)
 {
      char *c;
 
      assert(!error);
-     assert(o->type == STRING);
+     assert(o->form == STRING);
 
      c = strchr(o->val.v_str, '\n');
      if (c) {
@@ -115,7 +119,7 @@ gtp_check_name(Obj *o, bool error)
 
 /* prepare everything required for GTP communication. */
 void
-gtp_init(Board *b)
+gtp_init(struct Board *b)
 {
      assert(b->width >= 2 && b->width <= 25);
      assert(b->height >= 2 && b->height <= 25);
@@ -154,7 +158,7 @@ gtp_init(Board *b)
 
 
 void
-gtp_pass(Board *b, Stone s)
+gtp_pass(struct Board *b, enum Stone s)
 {
      assert(b != NULL);
      assert(s == BLACK || s == WHITE);
@@ -170,7 +174,7 @@ gtp_pass(Board *b, Stone s)
 
 /* place a STONE at COORD on BOARD and tell the engine */
 bool
-gtp_place_stone(Board *b, Stone s, Coord c)
+gtp_place_stone(struct Board *b, enum Stone s, struct Coord c)
 {
      char param[1 + 1 + 1 + 4 + 1]; /* eg. "b a15" */
 
@@ -180,15 +184,15 @@ gtp_place_stone(Board *b, Stone s, Coord c)
      assert(c.y < b->height);
 
      snprintf(param, sizeof(param), "%c %c%d",
-	      s == BLACK ? 'b' : 'w',
-	      'a' + (c.x) + !('a' + (c.x) < 'i'),
-	      b->height - c.y);
+              s == BLACK ? 'b' : 'w',
+              'a' + (c.x) + !('a' + (c.x) < 'i'),
+              b->height - c.y);
 
      if (place_stone(b, s, c) >= 0) {
-	  gtp_run_command(b, PLAY, param, NULL);
-	  return true;
+          gtp_run_command(b, PLAY, param, NULL);
+          return true;
      }
-     
+
      return false;
 }
 
@@ -197,7 +201,7 @@ gtp_place_stone(Board *b, Stone s, Coord c)
 static bool
 gtp_handle_respose(struct Query *q, struct Response *r)
 {
-     static const Type types[] = {
+     static const enum Form types[] = {
           [PROTOCOL_VERSION]	= INT,
           [NAME]		= STRING,
           [QUIT]		= NIHIL,
@@ -210,16 +214,16 @@ gtp_handle_respose(struct Query *q, struct Response *r)
           [REG_GENMOVE]		= VERTEX,
      };
 
-     Obj obj = { .type = types[q->cmd] };
+     struct Obj obj = { .form = types[q->cmd] };
      ssize_t i;
 
      if (r->error) {
-          obj.type = INVAL;
+          obj.form = INVAL;
           obj.val.v_str = r->resp;
           return q->cb && q->cb(&obj, true);
      }
 
-     switch (obj.type) {
+     switch (obj.form) {
      case INT:
           if (sscanf(r->resp, "%u", &obj.val.v_int) < 1) {
                gtp_log("invalid int (%s)", r->resp);
@@ -304,8 +308,8 @@ gtp_check_responses(void)
      static size_t cap = 0, len = 0;
      static char *resp = NULL, last = '\0';
 
-     struct Query *q, *q1;
-     struct Response *r, *r1;
+     struct Query *q, *q1, *qn;
+     struct Response *r, *r1, *rn;
 
      char buf[BUFSIZ + 1];
      size_t j;
@@ -329,19 +333,19 @@ gtp_check_responses(void)
                     exit(EXIT_FAILURE);
                }
           }
- 
+
           /* process parsed data */
           for (j = 1; j < (size_t) i + 1; j++) {
                switch (buf[j]) { /* preprocessing */
-                    
+
                     /* "Convert all occurences of HT to SPACE." */
-               case '\t':       
+               case '\t':
                     buf[j] = ' ';
                     break;
+
                     /* "For each line with a hash sign (#), remove all
                      * text following and including this
                      * character."  */
-                    
                case '#':
                     state = IN_COMMENT;
                     break;
@@ -508,11 +512,12 @@ cross_ref:
      /* after checking the new responses, attempt to cross-reference
       * them with the queries. */
 
-     /* XXX: sometimes this loop doesn't terminate, becasue the list
-      * has a back-reference or segfaults becasuse q is assigned an
-      * invalid (usually large) pointer. */
-     for (q1 = NULL, q = queries; q; q1 = q, q = q->next) {
-          for (r1 = NULL, r = responses; r; r1 = r, r = r->next) {
+     for (q1 = NULL, q = queries; q; q1 = q, q = qn) {
+          qn = q->next;         /* prevent use-after-free */
+
+          for (r1 = NULL, r = responses; r; r1 = r, r = rn) {
+               rn = r->next;    /* prevent use-after-free */
+
                if (q->id == r->id) {
                     /* when the query ID matches the response ID,
                      * parse the response and call the callback
@@ -535,6 +540,7 @@ cross_ref:
                          queries = q->next;
                     }
                     free(q);
+                    break;
                }
           }
      }
@@ -543,7 +549,7 @@ cross_ref:
 }
 
 void
-gtp_run_command(Board *b, Command c, char *param, Callback cb)
+gtp_run_command(struct Board *b, enum Command c, char *param, callback cb)
 {
      struct Query *q;
      static uint32_t counter = 0;
@@ -602,4 +608,3 @@ gtp_run_command(Board *b, Command c, char *param, Callback cb)
      b->changed = false;
      gtp_check_responses();
 }
-
