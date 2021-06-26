@@ -14,7 +14,7 @@ If you wish to install sgo globally on your system, run
 
 To play against a bot, external programms are required. See the
 "contrib" subdirectory for ready-made scripts that connect sgo with
-various engines.
+various engines.  Note that these assume sgo to be in PATH.
 
 [0] https://xcb.freedesktop.org/
 
